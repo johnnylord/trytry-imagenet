@@ -1,0 +1,22 @@
+---
+
+train:
+  agent: "ImageNetAgent"
+  device: "cuda:1"
+  log_dir: "run"
+  exp_name: "resnet18"
+  n_epochs: 100
+  interval: 100
+  resume: false
+
+dataset:
+  root: "/home/johnnylord/datasets/ImageNet"
+  size: 256
+  ratio: 0.7
+
+dataloader:
+  batch_size: 32
+  num_workers: 4
+
+optim:
+  lr: 0.001
