@@ -1,15 +1,17 @@
 ---
 
 train:
-  # Single training setting
   agent: "ImageNetAgent"
-  device: "cuda"
   log_dir: "run"
-  exp_name: "resnet18"
+  exp_name: "resnet18_dist"
   n_epochs: 100
   interval: 20
   resume: false
-  mode: "single"
+  # Distributed training setting
+  mode: "parallel"
+  master_addr: "localhost"
+  master_port: "11000"
+  gpus: [0, 1, 2, 3]
 
 dataset:
   root: "/home/johnnylord/datasets/ImageNet"
