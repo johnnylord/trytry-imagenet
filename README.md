@@ -12,8 +12,16 @@ $ cd ImageNet-Datasets-Downloader && mkdir download
 $ python downloader.py -data_root download -number_of_classes 1000 -images_per_class 500 -multiprocessing_workers 8
 ```
 
-## Distributed Training
-TODO
+## Training
+- Normal training (with one GPU)
+```bash
+$ python main.py --config config/resnet18.yml
+```
+
+- Distributed training (with multiple gpus)
+```bash
+$ python dist_main.py --config config/resnet18_dist.yml
+```
 
 ## Pretrained Models
 TODO
