@@ -11,16 +11,25 @@ train:
   mode: "parallel"
   master_addr: "localhost"
   master_port: "11000"
-  gpus: [0, 1, 2, 3]
+  gpus: [2]
 
 dataset:
-  root: "/home/johnnylord/datasets/ImageNet"
   size: 224
-  ratio: 0.7
+  ratio: 0.1
+  train:
+    root: "/home/johnnylord/disk/ILSVRC/Data/CLS-LOC/train"
+  test:
+    img_dir: "/home/johnnylord/disk/ILSVRC/Data/CLS-LOC/val"
+    label_dir: "/home/johnnylord/disk/ILSVRC/Annotations/CLS-LOC/val"
 
 dataloader:
-  batch_size: 64
+  batch_size: 256
   num_workers: 4
 
-optim:
-  lr: 0.001
+optimizer:
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 0.0005
+
+scheduler:
+  warmup_epochs: 5
