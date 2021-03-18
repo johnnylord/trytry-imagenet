@@ -16,10 +16,9 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 import torchvision.transforms as T
 from torchvision.datasets import ImageFolder
-from torchvision.models.resnet import resnet18
 from tensorboardX import SummaryWriter
 
-from data.dataset import PASCALImageNet
+from model import get_model_cls
 
 
 __all__ = [ "ImageNetAgent" ]
@@ -78,14 +77,15 @@ class ImageNetAgent:
                                 pin_memory=True,
                                 shuffle=False)
         # Model
+        model_cls = get_model_cls(config['model']['name'])
+        model = model_cls(in_channels=config['model']['in_channels'],
+                        num_classes=config['model']['num_classes'])
         if config['train']['mode'] == 'parallel':
-            model = resnet18()
             model = model.to(self.device)
             self.model = DDP(model,
                             device_ids=[config['train']['gpus'][rank]])
         else:
-            self.model = resnet18()
-            self.model = self.model.to(self.device)
+            self.model = model.to(self.device)
 
         # Optimizer
         self.optimizer = optim.SGD(self.model.parameters(),

@@ -3,8 +3,8 @@
 train:
   agent: "ImageNetAgent"
   log_dir: "run"
-  exp_name: "resnet18_dist"
-  n_epochs: 160
+  exp_name: "darknet53_dist"
+  n_epochs: 100
   interval: 20
   resume: false
   # Distributed training setting
@@ -16,13 +16,18 @@ train:
 dataset:
   size: 224
   train:
-    root: "/home/advattack/imagenet/ILSVRC2012/train"
+    root: "/home/advattack/imagenet_ssd/ILSVRC2012/train"
   valid:
-    root: "/home/advattack/imagenet/ILSVRC2012/val"
+    root: "/home/advattack/imagenet_ssd/ILSVRC2012/val"
 
 dataloader:
-  batch_size: 1024
-  num_workers: 8
+  batch_size: 256 # * len(gpus)
+  num_workers: 8  # * len(gpus)
+
+model:
+  name: "Darknet53"
+  in_channels: 3
+  num_classes: 1000
 
 optimizer:
   lr: 0.1
@@ -30,4 +35,4 @@ optimizer:
   weight_decay: 0.0005
 
 scheduler:
-  warmup_epochs: 5
+  warmup_epochs: 3
