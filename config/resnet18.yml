@@ -2,16 +2,13 @@
 
 train:
   agent: "ImageNetAgent"
+  device: "cuda"
   log_dir: "run"
-  exp_name: "darknet53_dist"
+  exp_name: "resnet18"
   n_epochs: 100
   interval: 20
   resume: false
-  # Distributed training setting
-  mode: "parallel"
-  master_addr: "localhost"
-  master_port: "11000"
-  gpus: [0, 1, 2, 3]
+  mode: "single"
 
 dataset:
   size: 224
@@ -21,14 +18,13 @@ dataset:
     root: "/home/advattack/imagenet_ssd/ILSVRC2012/val"
 
 dataloader:
-  batch_size: 256
+  batch_size: 512
   num_workers: 8
 
 model:
-  name: "Darknet53"
+  name: "resnet18"
   kwargs:
-    in_channels: 3
-    num_classes: 1000
+    pretrained: true
 
 optimizer:
   lr: 0.1

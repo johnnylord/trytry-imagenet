@@ -3,7 +3,7 @@
 train:
   # Single training setting
   agent: "ImageNetAgent"
-  device: "cuda:2"
+  device: "cuda"
   log_dir: "run"
   exp_name: "darknet53"
   n_epochs: 100
