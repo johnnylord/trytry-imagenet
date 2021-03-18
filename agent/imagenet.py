@@ -39,15 +39,14 @@ class ImageNetAgent:
 
         # Dataset
         train_transform = T.Compose([
-                            T.Resize((config['dataset']['size'], config['dataset']['size'])),
+                            T.RandomResizedCrop((config['dataset']['size'], config['dataset']['size'])),
                             T.RandomHorizontalFlip(),
-                            T.RandomRotation(10),
-                            T.ColorJitter(brightness=0.5, contrast=0.5, hue=0.5),
                             T.ToTensor(),
                             T.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225]) ])
         valid_transform = T.Compose([
-                            T.Resize((config['dataset']['size'], config['dataset']['size'])),
+                            T.Resize(256),
+                            T.CenterCrop((config['dataset']['size'], config['dataset']['size'])),
                             T.ToTensor(),
                             T.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225]) ])
@@ -183,9 +182,6 @@ class ImageNetAgent:
         if self.rank <= 0:
             epoch_loss = sum(losses)/len(losses)
             epoch_acc = sum(accs)/len(accs)
-            if self.config['train']['mode'] == 'parallel':
-                epoch_loss *= len(self.config['train']['gpus'])
-                epoch_acc *= len(self.config['train']['gpus'])
             self.writer.add_scalar("Train Loss", epoch_loss, self.current_epoch)
             self.writer.add_scalar("Train Acc", epoch_acc, self.current_epoch)
             print("Epoch {}:{}, Train Loss: {:.2f}, Train Acc: {:.2f}".format(
