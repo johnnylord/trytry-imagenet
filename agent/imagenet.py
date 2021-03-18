@@ -1,5 +1,6 @@
 import os
 import os.path as osp
+import time
 from tqdm import tqdm
 
 import torch
@@ -39,27 +40,20 @@ class ImageNetAgent:
 
         # Dataset
         train_transform = T.Compose([
-                            T.RandomResizedCrop(config['dataset']['size']),
+                            T.Resize((config['dataset']['size'], config['dataset']['size'])),
                             T.RandomHorizontalFlip(),
                             T.RandomRotation(10),
                             T.ColorJitter(brightness=0.5, contrast=0.5, hue=0.5),
                             T.ToTensor(),
                             T.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225]) ])
-        test_transform = T.Compose([
+        valid_transform = T.Compose([
+                            T.Resize((config['dataset']['size'], config['dataset']['size'])),
                             T.ToTensor(),
                             T.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225]) ])
         train_dataset = ImageFolder(config['dataset']['train']['root'], transform=train_transform)
-        test_dataset = PASCALImageNet(img_dir=config['dataset']['test']['img_dir'],
-                                    label_dir=config['dataset']['test']['label_dir'],
-                                    class_to_idx=train_dataset.class_to_idx,
-                                    transform=test_transform)
-
-        # Train and valid split
-        train_samples = int(len(train_dataset)*config['dataset']['ratio'])
-        valid_samples = len(train_dataset) - train_samples
-        train_dataset, valid_dataset = random_split(train_dataset, [train_samples, valid_samples])
+        valid_dataset = ImageFolder(config['dataset']['valid']['root'], transform=valid_transform)
 
         # Dataloader
         if config['train']['mode'] == 'parallel':
@@ -69,28 +63,26 @@ class ImageNetAgent:
                                         sampler=self.sampler,
                                         batch_size=config['dataloader']['batch_size'],
                                         num_workers=config['dataloader']['num_workers'],
-                                        pin_memory=True)
+                                        pin_memory=True,
+                                        shuffle=False)
         else:
             self.train_loader = DataLoader(train_dataset,
                                     batch_size=config['dataloader']['batch_size'],
                                     num_workers=config['dataloader']['num_workers'],
+                                    pin_memory=True,
                                     shuffle=True)
 
         self.valid_loader = DataLoader(valid_dataset,
                                 batch_size=config['dataloader']['batch_size'],
                                 num_workers=config['dataloader']['num_workers'],
-                                shuffle=False)
-        self.test_loader = DataLoader(test_dataset,
-                                batch_size=config['dataloader']['batch_size'],
-                                num_workers=config['dataloader']['num_workers'],
+                                pin_memory=True,
                                 shuffle=False)
         # Model
         if config['train']['mode'] == 'parallel':
             model = resnet18()
             model = model.to(self.device)
             self.model = DDP(model,
-                            device_ids=[config['train']['gpus'][rank]],
-                            output_device=config['train']['gpus'][rank])
+                            device_ids=[config['train']['gpus'][rank]])
         else:
             self.model = resnet18()
             self.model = self.model.to(self.device)
@@ -109,7 +101,7 @@ class ImageNetAgent:
                                                 total_epoch=config['scheduler']['warmup_epochs'],
                                                 after_scheduler=scheduler)
         # Loss funciton
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss().to(self.device)
 
         # Tensorboard
         if (
@@ -149,20 +141,10 @@ class ImageNetAgent:
     def train(self):
         for epoch in range(self.current_epoch+1, self.config['train']['n_epochs']):
             self.current_epoch = epoch
-            if (
-                self.config['train']['mode'] == 'parallel'
-                and self.rank == 0
-            ):
+            if self.config['train']['mode'] == 'parallel':
                 self.sampler.set_epoch(self.current_epoch)
                 self.train_one_epoch()
                 self.validate()
-                self.scheduler.step()
-            elif (
-                self.config['train']['mode'] == 'parallel'
-                and self.rank > 0
-            ):
-                self.sampler.set_epoch(self.current_epoch)
-                self.train_one_epoch()
                 self.scheduler.step()
             else:
                 self.train_one_epoch()
@@ -180,8 +162,8 @@ class ImageNetAgent:
                     ),
                 leave=True)
         for batch_idx, (imgs, labels) in enumerate(loop):
-            imgs = imgs.to(self.device)
-            labels = labels.to(self.device)
+            imgs = imgs.to(self.device, non_blocking=True)
+            labels = labels.to(self.device, non_blocking=True)
 
             self.optimizer.zero_grad()
             outputs = self.model(imgs)
@@ -217,13 +199,13 @@ class ImageNetAgent:
         loop = tqdm(self.valid_loader,
                 desc=(
                     f"Valid Epoch {self.current_epoch}/{self.config['train']['n_epochs']}"
-                    f"- LR: {self.optimizer.param_groups[0]['lr']}"
+                    f"- LR: {self.optimizer.param_groups[0]['lr']:.3f}"
                     ),
                 leave=True)
         with torch.no_grad():
             for batch_idx, (imgs, labels) in enumerate(loop):
-                imgs = imgs.to(self.device)
-                labels = labels.to(self.device)
+                imgs = imgs.to(self.device, non_blocking=True)
+                labels = labels.to(self.device, non_blocking=True)
 
                 outputs = self.model(imgs)
                 loss = self.criterion(outputs, labels)
@@ -239,15 +221,16 @@ class ImageNetAgent:
 
         epoch_loss = sum(losses)/len(losses)
         epoch_acc = sum(accs)/len(accs)
-        self.writer.add_scalar("Valid Loss", epoch_loss, self.current_epoch)
-        self.writer.add_scalar("Valid Acc", epoch_acc, self.current_epoch)
         print("Epoch {}:{}, Valid Loss: {:.2f}, Valid Acc: {:.2f}".format(
             self.current_epoch, self.config['train']['n_epochs'],
             epoch_loss, epoch_acc))
-
+        if self.rank <= 0:
+            self.writer.add_scalar("Valid Loss", epoch_loss, self.current_epoch)
+            self.writer.add_scalar("Valid Acc", epoch_acc, self.current_epoch)
         if epoch_loss < self.current_loss:
             self.current_loss = epoch_loss
-            self._save_checkpoint()
+            if self.rank <= 0:
+                self._save_checkpoint()
 
     def finalize(self):
         pass
@@ -259,8 +242,7 @@ class ImageNetAgent:
                 'current_epoch': self.current_epoch,
                 'current_loss': self.current_loss
                 }
-        checkpoint_dir = osp.join(self.config['train']['log_dir'],
-                                "{}_checkpoint".format(self.config['train']['exp_name']))
+        checkpoint_dir = osp.join(self.config['train']['log_dir'], self.config['train']['exp_name'])
         if not osp.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
         checkpoint_path = osp.join(checkpoint_dir, 'best.pth')

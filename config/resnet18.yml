@@ -13,12 +13,10 @@ train:
 
 dataset:
   size: 224
-  ratio: 0.01
   train:
-    root: "/home/johnnylord/disk/ILSVRC/Data/CLS-LOC/train"
-  test:
-    img_dir: "/home/johnnylord/disk/ILSVRC/Data/CLS-LOC/val"
-    label_dir: "/home/johnnylord/disk/ILSVRC/Annotations/CLS-LOC/val"
+    root: "/home/advattack/imagenet/ILSVRC2012/train"
+  valid:
+    root: "/home/advattack/imagenet/ILSVRC2012/val"
 
 dataloader:
   batch_size: 64

@@ -31,8 +31,11 @@ def dist_training(i, agent_cls, config):
     os.environ['MASTER_ADDR'] = config['train']['master_addr']
     os.environ['MASTER_PORT'] = config['train']['master_port']
     world_size=len(config['train']['gpus'])
-    dist.init_process_group("nccl", rank=i, world_size=world_size)
-
+    init_method = f"tcp://{config['train']['master_addr']}:{config['train']['master_port']}"
+    dist.init_process_group("nccl",
+                            rank=i,
+                            world_size=world_size,
+                            init_method=init_method)
     # Start training
     agent = agent_cls(config, rank=i)
     agent.train()
