@@ -11,7 +11,8 @@ train:
   mode: "parallel"
   master_addr: "localhost"
   master_port: "11000"
-  gpus: [0, 1, 2, 3]
+  gpus: [0]
+  #gpus: [0, 1, 2, 3]
 
 dataset:
   size: 224

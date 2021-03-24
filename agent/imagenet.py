@@ -81,6 +81,8 @@ class ImageNetAgent:
         if config['train']['mode'] == 'parallel':
             model = model.to(self.device)
             self.model = DDP(model, device_ids=[config['train']['gpus'][rank]])
+            # checkpoint = torch.load("run/darknet53_dist/best.pth")
+            # self.model.load_state_dict(checkpoint['model'])
         else:
             self.model = model.to(self.device)
 
@@ -98,12 +100,12 @@ class ImageNetAgent:
         self.criterion = nn.CrossEntropyLoss().to(self.device)
 
         # Tensorboard
+        self.log_dir = osp.join(config['train']['log_dir'],
+                                config['train']['exp_name'])
         if (
             (self.rank == 0 and config['train']['mode'] == 'parallel')
             or self.rank < 0
         ):
-            self.log_dir = osp.join(config['train']['log_dir'],
-                                    config['train']['exp_name'])
             self.writer = SummaryWriter(logdir=self.log_dir)
 
         # Dynamic state
@@ -113,19 +115,17 @@ class ImageNetAgent:
     def resume(self):
         checkpoint_path = osp.join(self.log_dir, 'best.pth')
 
-        if config['train']['mode'] == 'parallel':
-            master_gpu_id = config['train']['gpus'][0]
+        if self.config['train']['mode'] == 'parallel':
+            master_gpu_id = self.config['train']['gpus'][0]
             map_location = { 'cuda:{}'.format(master_gpu_id): self.device }
             checkpoint = torch.load(checkpoint_path, map_location=map_location)
         else:
             checkpoint = torch.load(checkpoint_path)
 
         # Load pretrained model
-        self.model = self.model.load_state_dict(checkpoint['model'])
-
-        # Load optimier
-        self.optimizer = self.optimizer.load_state_dict(checkpoint['optimizer'])
-        self.scheduler = self.scheduler.load_state_dict(checkpoint['scheduler'])
+        self.model.load_state_dict(checkpoint['model'])
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
+        self.scheduler.load_state_dict(checkpoint['scheduler'])
 
         # Resume to training state
         self.current_loss = checkpoint['current_loss']
@@ -219,9 +219,8 @@ class ImageNetAgent:
                 epoch_loss, epoch_acc))
             self.writer.add_scalar("Valid Loss", epoch_loss, self.current_epoch)
             self.writer.add_scalar("Valid Acc", epoch_acc, self.current_epoch)
-        if epoch_loss < self.current_loss:
-            self.current_loss = epoch_loss
-            if self.rank <= 0:
+            if epoch_loss < self.current_loss:
+                self.current_loss = epoch_loss
                 self._save_checkpoint()
 
     def finalize(self):

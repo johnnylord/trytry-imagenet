@@ -64,7 +64,6 @@ class Darknet53(nn.Module):
         self.feature = self._parse_yaml(arch_path)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(in_features=1024, out_features=num_classes, bias=True)
-        # self.
 
     def forward(self, x):
         # Forward backbone feature extractor

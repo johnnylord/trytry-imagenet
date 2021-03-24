@@ -38,6 +38,8 @@ def dist_training(i, agent_cls, config):
                             init_method=init_method)
     # Start training
     agent = agent_cls(config, rank=i)
+    if config['train']['resume']:
+        agent.resume()
     agent.train()
     agent.finalize()
 

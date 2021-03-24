@@ -11,6 +11,8 @@ def main(config_path):
 
     agent_cls = get_agent_cls(config['train']['agent'])
     agent = agent_cls(config)
+    if config['train']['resume']:
+        agent.resume()
     agent.train()
     agent.finalize()
 
