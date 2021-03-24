@@ -6,7 +6,7 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import MultiStepLR
 from warmup_scheduler import GradualWarmupScheduler
 from torch.utils.data import DataLoader, random_split
 from torch.utils.data.distributed import DistributedSampler
@@ -92,8 +92,8 @@ class ImageNetAgent:
                                 momentum=config['optimizer']['momentum'],
                                 weight_decay=config['optimizer']['weight_decay'])
         # Scheduler
-        self.scheduler = StepLR(self.optimizer,
-                                step_size=config['scheduler']['step_size'],
+        self.scheduler = MultiStepLR(self.optimizer,
+                                milestones=config['scheduler']['milestones'],
                                 gamma=config['scheduler']['gamma'])
 
         # Loss funciton
