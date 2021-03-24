@@ -13,12 +13,12 @@ train:
 dataset:
   size: 224
   train:
-    root: "/home/advattack/imagenet_ssd/ILSVRC2012/train"
+    root: "/home/johnnylord/disk/ILSVRC2012/train"
   valid:
-    root: "/home/advattack/imagenet_ssd/ILSVRC2012/val"
+    root: "/home/johnnylord/disk/ILSVRC2012/val"
 
 dataloader:
-  batch_size: 512
+  batch_size: 64
   num_workers: 8
 
 model:
@@ -26,11 +26,14 @@ model:
   kwargs:
     pretrained: true
 
+# SGD Optimizer
 optimizer:
   lr: 0.1
   momentum: 0.9
   weight_decay: 0.0005
 
+# MultiStepLR Scheduler
 scheduler:
-  step_size: 10
+  milestones: [10, 30. 60. 80]
   gamma: 0.1
+
